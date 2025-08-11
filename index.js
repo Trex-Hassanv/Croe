@@ -49,10 +49,10 @@ const defaultConfigContent = {
     "autoRestore": true,
     "syncUp": true,
     "delay": 500,
-    "maxRetries": 5, // Added max retries for operations
-    "retryDelay": 30000, // Added delay between retries (ms)
-    "enableCookies": true, // Added cookie persistence
-    "browserArgs": [ // Added browser-like arguments
+    "maxRetries": 5,
+    "retryDelay": 30000,
+    "enableCookies": true,
+    "browserArgs": [
       "--disable-notifications",
       "--disable-infobars",
       "--disable-web-security",
@@ -70,7 +70,7 @@ const defaultConfigContent = {
     "status": true, 
     "intervalMin": 60, 
     "intervalMax": 180,
-    "activities": ["markRead", "goOffline", "scrollFeed"] // Added specific activities
+    "activities": ["markRead", "goOffline", "scrollFeed"]
   },
   "autoRestart": {
     "enabled": true,
@@ -81,10 +81,10 @@ const defaultConfigContent = {
     "enabled": true,
     "interval": 300000,
     "timeout": 60000,
-    "maxFailures": 3 // Added max failures before restart
+    "maxFailures": 3
   },
   "unsendEmojis": ["🤓", "🚫"],
-  "security": { // Added security section
+  "security": {
     "enableProxy": false,
     "proxyList": [],
     "rotateUserAgent": true,
@@ -93,7 +93,45 @@ const defaultConfigContent = {
   }
 };
 
-// Enhanced chalk implementation with additional logging colors
+// Enhanced cookie domain fixing function
+function fixCookieDomains(appState) {
+    return appState.map(cookie => {
+        const newCookie = {...cookie};
+        
+        if (['c_user', 'xs', 'fr', 'datr'].includes(newCookie.name)) {
+            newCookie.domain = '.facebook.com';
+            newCookie.sameSite = 'none';
+            
+            if (newCookie.name === 'c_user' || newCookie.name === 'xs') {
+                const messengerCookie = {...newCookie};
+                messengerCookie.domain = '.messenger.com';
+                return [newCookie, messengerCookie];
+            }
+            return newCookie;
+        }
+        
+        newCookie.sameSite = 'none';
+        return newCookie;
+    }).flat();
+}
+
+// Enhanced login function with retry logic
+async function performLogin(loginData, fcaLoginOptions) {
+    if (loginData.appState) {
+        loginData.appState = fixCookieDomains(loginData.appState);
+    }
+    
+    return new Promise((resolve, reject) => {
+        login(loginData, fcaLoginOptions, (err, api) => {
+            if (err) {
+                return reject(err);
+            }
+            resolve(api);
+        });
+    });
+}
+
+// Enhanced chalk implementation
 let chalk;
 try {
   chalk = require('chalk');
@@ -126,15 +164,13 @@ const moment = require("moment-timezone");
 const cron = require("node-cron");
 const axios = require('axios');
 const login = require('hassan-fca');
-const puppeteer = require('puppeteer-extra'); // Added puppeteer for alternative login
-const StealthPlugin = require('puppeteer-extra-plugin-stealth'); // Added stealth plugin
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 
-// Apply stealth plugin for puppeteer
 puppeteer.use(StealthPlugin());
 
-// Enhanced utility functions for Facebook automation
+// Enhanced utility functions
 global.utils = {
-  // Enhanced UID finder with better error handling
   findUid: async function(url) {
     if (!url) throw new Error("URL is required");
     
@@ -149,7 +185,6 @@ global.utils = {
       const usernameOrId = match[3] || match[4];
       if (!usernameOrId) throw new Error("Could not extract ID or username from URL");
       
-      // Try multiple endpoints for better reliability
       const endpoints = [
         `https://graph.facebook.com/${usernameOrId}?fields=id&access_token=350685531728|62f8ce9f74b12f84c123cc23437a4a32`,
         `https://graph.facebook.com/v15.0/${usernameOrId}?fields=id&access_token=6628568379|c1e620fa708a1d5696fb991c1bde5662`
@@ -171,7 +206,6 @@ global.utils = {
     }
   },
 
-  // Enhanced human delay with randomization
   humanDelay: async (customMin, customMax) => {
     const config = global.config || defaultConfigContent;
     const min = customMin || config.humanLikeDelay.min;
@@ -185,7 +219,6 @@ global.utils = {
     return true;
   },
 
-  // Enhanced session management
   saveSession: async (api, filePath = "appstate.json") => {
     try {
       if (!api.getAppState) {
@@ -213,7 +246,6 @@ global.utils = {
     }
   },
 
-  // Enhanced login with puppeteer fallback
   enhancedLogin: async (credentials, options = {}) => {
     const maxAttempts = options.maxRetries || 3;
     const retryDelay = options.retryDelay || 30000;
@@ -221,13 +253,8 @@ global.utils = {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         logger.log(`Attempting login (attempt ${attempt}/${maxAttempts})`, "LOGIN");
-        
-        // Try primary login method first
         const api = await performLogin(credentials, options);
-        
-        // Verify login success
         await verifyLogin(api);
-        
         logger.log("Login successful", "LOGIN_SUCCESS");
         return api;
       } catch (err) {
@@ -243,7 +270,6 @@ global.utils = {
     }
   },
 
-  // Puppeteer-based login as fallback
   puppeteerLogin: async ({ email, password }) => {
     logger.log("Starting puppeteer login process", "PUPPETEER_LOGIN");
     
@@ -254,36 +280,29 @@ global.utils = {
       });
       
       const page = await browser.newPage();
-      
-      // Set realistic viewport and user agent
       await page.setViewport({ width: 1366, height: 768 });
       await page.setUserAgent(global.config.FCAOption.userAgent || userAgents[0]);
       
-      // Navigate to Facebook with realistic delays
       await page.goto('https://facebook.com', { 
         waitUntil: 'networkidle2',
         timeout: 60000 
       });
       await utils.humanDelay(2000, 5000);
       
-      // Fill login form with human-like typing
       await page.type('#email', email, { delay: 100 });
       await utils.humanDelay(500, 1500);
       await page.type('#pass', password, { delay: 80 });
       await utils.humanDelay(1000, 3000);
       
-      // Click login button
       await page.click('[name="login"]');
       await utils.humanDelay(5000, 10000);
       
-      // Wait for login completion
       try {
         await page.waitForNavigation({ timeout: 30000 });
       } catch (e) {
         logger.warn("Navigation timeout exceeded, continuing anyway", "LOGIN_WARN");
       }
       
-      // Get cookies and convert to appstate format
       const cookies = await page.cookies();
       const appState = cookies.map(cookie => ({
         key: cookie.name,
@@ -295,12 +314,9 @@ global.utils = {
         httponly: cookie.httpOnly
       }));
       
-      // Save the session
       await utils.saveSession({ getAppState: () => appState });
-      
       await browser.close();
       
-      // Return API instance using the new appstate
       return await performLogin({ appState }, global.config.FCAOption);
     } catch (err) {
       logger.err(`Puppeteer login failed: ${err.message}`, "PUPPETEER_LOGIN_FAIL");
@@ -308,7 +324,6 @@ global.utils = {
     }
   },
 
-  // Verify login status
   verifyLogin: async (api) => {
     try {
       await api.getThreadList(1, null, ['INBOX']);
@@ -318,25 +333,23 @@ global.utils = {
     }
   },
 
-  // Rest of your utility functions...
   decryptState: (encryptedState, key) => {
     logger.warn("DecryptState is a placeholder. Implement actual decryption if 'encryptSt' is true.", "DECRYPT_WARN");
     return encryptedState;
   },
+
   encryptState: (state, key) => {
     logger.warn("EncryptState is a placeholder. Implement actual encryption if 'encryptSt' is true.", "ENCRYPT_WARN");
     return state;
   },
+
   restartBot: async (api, reason = "Scheduled restart") => {
     logger.warn(`Restarting bot: ${reason}`, "RESTART");
-
-    // Save current state before restarting
     savePersistentData({
       installedCommands: global.installedCommands,
       adminMode: global.adminMode
     });
 
-    // Notify admins if configured
     if (global.config.autoRestart.notifyAdmins && global.config.ADMINBOT && global.config.ADMINBOT.length > 0) {
       for (const adminID of global.config.ADMINBOT) {
         try {
@@ -350,10 +363,7 @@ global.utils = {
       }
     }
 
-    // Delay to allow notifications to send
     await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Use child process to restart
     process.on('exit', () => {
       spawn(process.argv.shift(), process.argv, {
         cwd: process.cwd(),
@@ -363,11 +373,11 @@ global.utils = {
     });
     process.exit();
   },
+
   checkHeartbeat: async (api) => {
     if (!global.config.heartbeat?.enabled) return true;
     
     try {
-      // Simple check to see if API is responsive
       const startTime = Date.now();
       await Promise.race([
         api.getThreadList(1, null, ['INBOX']),
@@ -387,12 +397,11 @@ global.utils = {
   }
 };
 
-// Enhanced persistent storage system
+// Persistent storage system
 const DATA_DIR = path.join(__dirname, 'data');
 const PERSISTENT_FILE = path.join(DATA_DIR, 'persistent.json');
 const SESSION_FILE = path.join(DATA_DIR, 'session_backup.json');
 
-// Ensure data directory exists
 fs.ensureDirSync(DATA_DIR);
 
 function loadPersistentData() {
@@ -400,7 +409,6 @@ function loadPersistentData() {
     if (fs.existsSync(PERSISTENT_FILE)) {
       const data = JSON.parse(fs.readFileSync(PERSISTENT_FILE, 'utf8'));
       
-      // Validate and migrate data if needed
       if (!data.installedCommands || !Array.isArray(data.installedCommands)) {
         data.installedCommands = [];
       }
@@ -424,10 +432,8 @@ function loadPersistentData() {
   };
 }
 
-// Enhanced save function with session backup
 function savePersistentData(data) {
   try {
-    // Prepare data to save
     const saveData = {
       installedCommands: Array.isArray(data.installedCommands) ? data.installedCommands : [],
       adminMode: {
@@ -437,10 +443,8 @@ function savePersistentData(data) {
       sessions: data.sessions || {}
     };
     
-    // Save main persistent file
     fs.writeFileSync(PERSISTENT_FILE, JSON.stringify(saveData, null, 2));
     
-    // Create session backup if appstate exists
     if (fs.existsSync('appstate.json')) {
       const appState = fs.readFileSync('appstate.json', 'utf8');
       saveData.sessions.lastAppState = appState;
@@ -454,10 +458,9 @@ function savePersistentData(data) {
   }
 }
 
-// Load persistent data at startup
 const persistentData = loadPersistentData();
 
-// Creator protection (keep your existing implementation)
+// Creator protection
 const CREATOR_NAME = "Hassan";
 let creatorName = CREATOR_NAME;
 
@@ -469,7 +472,7 @@ function protectCreatorName() {
   }
 }
 
-// Enhanced logger with more features
+// Enhanced logger
 const logger = {
   log: (message, tag = "INFO") => {
     protectCreatorName();
@@ -500,12 +503,11 @@ const logger = {
   }
 };
 
-// Enhanced thread data manager with backup
+// Thread data manager
 function createThreadDataManager() {
     const threadDataStore = new Map();
-    const backupInterval = 3600000; // 1 hour
+    const backupInterval = 3600000;
     
-    // Periodic backup
     setInterval(() => {
         try {
             const backupFile = path.join(DATA_DIR, 'thread_data_backup.json');
@@ -608,21 +610,18 @@ function createThreadDataManager() {
     };
 }
 
-// Enhanced listener function with better error handling
+// Listener function
 const listen = ({ api }) => {
     return async (error, event) => {
         try {
-            // Add initial delay to mimic human behavior
             await utils.humanDelay();
             
             if (error) {
                 logger.err(`Listen error: ${error.message}`, "LISTENER_ERROR");
                 
-                // Handle specific error cases
                 if (error.error === 'Not logged in' || error.error === 'Login approval needed') {
                     logger.warn("Session expired or invalid. Attempting to re-login...", "SESSION_EXPIRED");
                     
-                    // Try to re-login automatically
                     try {
                         const newApi = await utils.enhancedLogin(
                             { appState: api.getAppState() },
@@ -638,35 +637,29 @@ const listen = ({ api }) => {
                 return;
             }
 
-            // Enhanced event validation
             if (!event || typeof event !== 'object') {
                 logger.err("Received invalid event object", "EVENT_VALIDATION");
                 return;
             }
 
-            // Skip processing if event is missing required properties
             if (!event.type && !event.logMessageType) {
                 logger.debug("Event missing type information - skipping", "EVENT_VALIDATION");
                 return;
             }
 
-            // Skip if threadID is invalid
             if (event.threadID && typeof event.threadID !== 'string') {
                 logger.err("Invalid threadID in event", "EVENT_VALIDATION");
                 return;
             }
 
-            // Special handling for video messages
             if (event.attachments && event.attachments.length > 0) {
                 const videoAttachments = event.attachments.filter(att => att.type === "video");
                 if (videoAttachments.length > 0) {
                     logger.log(`Received video message with ${videoAttachments.length} video(s)`, "VIDEO_MESSAGE");
-                    // Skip processing or add your video handling logic here
                     return;
                 }
             }
 
-            // Log event type if it exists
             if (event.type) {
                 logger.log(`Received event type: ${event.type}`, "EVENT_RECEIVED");
             } else if (event.logMessageType) {
@@ -699,29 +692,19 @@ const listen = ({ api }) => {
                 return;
             }
 
-            // Check if event has type property before accessing it
             if (event.type === "message_reaction") {
                 if (!event.messageID) {
                     logger.err("Message reaction event missing messageID", "EVENT_ERROR");
                     return;
                 }
 
-                // Handle unsend emoji reactions
                 const currentConfig = global.config || defaultConfigContent;
                 const unsendEmojis = currentConfig.unsendEmojis || ["🤓", "🚫"];
                 
                 if (unsendEmojis.includes(event.reaction)) {
                     try {
-                        // Instead of getMessageInfo, we'll use a simpler approach
-                        // Since we can't reliably get message info, we'll:
-                        // 1. Allow admins to unsend any message
-                        // 2. Allow users to unsend their own messages
-                        // 3. In group chats, allow participants to unsend bot messages
-                        
-                        // First check if the reactor is an admin
                         const isAdmin = global.config.ADMINBOT.includes(event.senderID);
                         
-                        // For non-admins, we need to check if they're in the same thread
                         let isParticipant = false;
                         if (!isAdmin) {
                             try {
@@ -783,12 +766,10 @@ const listen = ({ api }) => {
                 return;
             }
 
-            // Ensure global.api and global.api.handleReply are initialized properly
             global.api = api;
             global.api.handleReply = global.api.handleReply || new Map();
 
             if (event.type === "message" || event.type === "message_reply") {
-                // Skip if message is empty and has no attachments
                 if (!event.body && (!event.attachments || event.attachments.length === 0)) {
                     logger.log("Received empty message with no attachments", "EMPTY_MESSAGE");
                     return;
@@ -799,8 +780,6 @@ const listen = ({ api }) => {
                 let threadPrefix = await global.data.threads.get(event.threadID, "data.prefix") || systemPrefix;
                 let commandFoundAndExecuted = false;
 
-                // ======= HANDLE PREFIX COMMANDS =======
-                // Check for prefix command in various formats
                 const prefixCommandRegex = /^(?:prefix|\?prefix|Prefix)\s*$/i;
                 if (prefixCommandRegex.test(event.body.trim())) {
                     await utils.humanDelay();
@@ -811,7 +790,6 @@ const listen = ({ api }) => {
                     );
                 }
 
-                // Handle prefix change command in various formats
                 const prefixChangeRegex = /^(?:prefix|\?prefix|Prefix)\s+(\S+)/i;
                 const prefixChangeMatch = event.body.match(prefixChangeRegex);
                 if (prefixChangeMatch) {
@@ -837,7 +815,6 @@ const listen = ({ api }) => {
                     return;
                 }
 
-                // ======= HANDLE REPLY =======
                 if (event.type === "message_reply") {
                     if (!event.messageReply || !event.messageReply.messageID) {
                         logger.err("Invalid reply event - missing messageReply data", "REPLY_ERROR");
@@ -892,7 +869,6 @@ const listen = ({ api }) => {
 
                 if (commandFoundAndExecuted) return;
 
-                // ======= HANDLE onStart COMMANDS =======
                 if (lowerCaseBody.startsWith(threadPrefix)) {
                     const args = event.body.slice(threadPrefix.length).trim().split(/\s+/);
                     const commandName = args.shift().toLowerCase();
@@ -1143,11 +1119,10 @@ const listen = ({ api }) => {
     };
 };
 
-// Enhanced custom scripts with better scheduling
+// Custom scripts
 const customScript = ({ api }) => {
     logger.log("Initializing enhanced custom scripts...", "CUSTOM_SCRIPTS");
     
-    // Auto-accept pending messages with better error handling
     const acceptPendingConfig = {
         status: true,
         time: 30,
@@ -1178,7 +1153,7 @@ const customScript = ({ api }) => {
                             success = true;
                         } else {
                             logger.debug("No pending threads to approve", "AUTO_PENDING");
-                            success = true; // No threads is not an error
+                            success = true;
                         }
                     } catch (e) {
                         logger.err(`Error accepting pending messages (attempt ${attempts}/${config.maxAttempts}): ${e.message}`, "AUTO_PENDING_ERROR");
@@ -1196,7 +1171,6 @@ const customScript = ({ api }) => {
     
     acceptPending(acceptPendingConfig);
 
-    // Enhanced random activity with more options
     if (global.config.randomActivity?.status) {
         cron.schedule('*/1 * * * *', async () => {
             try {
@@ -1207,7 +1181,6 @@ const customScript = ({ api }) => {
                 if (Date.now() - global.client.lastActivityTime > randomMinutes * 60 * 1000) {
                     logger.log("Performing random human-like activity...", "ACTIVITY");
                     
-                    // Get threads with error handling
                     let threadList;
                     try {
                         threadList = await api.getThreadList(5, null, ['INBOX']);
@@ -1220,7 +1193,6 @@ const customScript = ({ api }) => {
                         const randomThread = threadList[Math.floor(Math.random() * threadList.length)];
                         const activities = [];
                         
-                        // Build activity list based on config
                         if (global.config.randomActivity.activities.includes("markRead")) {
                             activities.push(async () => {
                                 await utils.humanDelay();
@@ -1255,8 +1227,6 @@ const customScript = ({ api }) => {
                             });
                         }
                         
-                        // Add more activities as needed...
-                        
                         if (activities.length > 0) {
                             const randomActivity = activities[Math.floor(Math.random() * activities.length)];
                             await randomActivity();
@@ -1273,7 +1243,6 @@ const customScript = ({ api }) => {
         });
     }
 
-    // Auto-restart schedule
     if (global.config.autoRestart?.enabled) {
         cron.schedule(global.config.autoRestart.schedule, async () => {
             await utils.restartBot(api, "Scheduled restart");
@@ -1283,9 +1252,8 @@ const customScript = ({ api }) => {
         });
     }
 
-    // Heartbeat monitoring
     if (global.config.heartbeat?.enabled) {
-        const interval = global.config.heartbeat.interval || 300000; // Default 5 minutes
+        const interval = global.config.heartbeat.interval || 300000;
         const maxFailedAttempts = global.config.heartbeat.maxFailures || 3;
         let failedAttempts = 0;
 
@@ -1301,7 +1269,7 @@ const customScript = ({ api }) => {
                         await utils.restartBot(api, "Heartbeat failure");
                     }
                 } else {
-                    failedAttempts = 0; // Reset on success
+                    failedAttempts = 0;
                 }
             } catch (e) {
                 logger.err(`Error in heartbeat check: ${e.message}`, "HEARTBEAT_ERROR");
@@ -1316,11 +1284,10 @@ const customScript = ({ api }) => {
     }
 };
 
-// --- Appstate Management and Login ---
+// Appstate management
 const appStatePlaceholder = "(›^-^)›";
 const fbstateFile = "appstate.json";
 
-// User-agent list for randomization
 const userAgents = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
@@ -1331,28 +1298,22 @@ const userAgents = [
     "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1"
 ];
 
-// Login stability variables
 let loginAttempts = 0;
 let isLoggingIn = false;
 let lastLoginAttempt = 0;
 let isBlocked = false;
 let lastBlockCheck = 0;
-let server = null; // Variable to hold the Express server instance
+let server = null;
 
-// Function to check if account is blocked
 async function checkBlockStatus(api) {
     try {
-        // Check if we've recently checked block status
-        if (Date.now() - lastBlockCheck < 300000) { // 5 minutes
+        if (Date.now() - lastBlockCheck < 300000) {
             return isBlocked;
         }
         
         lastBlockCheck = Date.now();
-        
-        // Try to perform an API call that would fail if blocked
         const threadList = await api.getThreadList(1, null, ['INBOX']);
         
-        // If we got this far, we're not blocked
         if (isBlocked) {
             logger.log("Account is no longer blocked", "BLOCK_STATUS");
             isBlocked = false;
@@ -1367,73 +1328,8 @@ async function checkBlockStatus(api) {
             isBlocked = true;
             return true;
         }
-        // Other errors don't necessarily mean we're blocked
         return false;
     }
-}
-
-// Enhanced login function with retry logic and block detection
-async function performLogin(loginData, fcaLoginOptions) {
-    return new Promise((resolve, reject) => {
-        if (isLoggingIn) {
-            return reject(new Error("Login already in progress"));
-        }
-
-        isLoggingIn = true;
-        loginAttempts++;
-        lastLoginAttempt = Date.now();
-
-        logger.log(`Attempting login (attempt ${loginAttempts}/5)`, "LOGIN_ATTEMPT");
-
-        // Check if the account has been recently blocked. If so, apply a long cooldown.
-        if (isBlocked) {
-            // Wait 2 hours before retrying after a block. This gives the user time to verify.
-            const cooldownTime = 7200000; // 2 hours in milliseconds
-            const timeSinceBlock = Date.now() - lastBlockCheck;
-            if (timeSinceBlock < cooldownTime) {
-                isLoggingIn = false;
-                const remainingMinutes = Math.ceil((cooldownTime - timeSinceBlock) / 60000);
-                return reject(new Error(`Account is currently in cooldown after being blocked. Please wait ${remainingMinutes} minutes before retrying.`));
-            } else {
-                // Cooldown is over, reset block status and try again.
-                logger.log("Block cooldown period has ended. Retrying login...", "BLOCK_COOLDOWN");
-                isBlocked = false;
-            }
-        }
-        
-        // Select a random user agent for this login attempt
-        const randomUserAgent = userAgents[Math.floor(Math.random() * userAgents.length)];
-        fcaLoginOptions.userAgent = randomUserAgent;
-        logger.log(`Using User-Agent: ${randomUserAgent}`, "USER_AGENT");
-
-        login(loginData, fcaLoginOptions, (err, api) => {
-            isLoggingIn = false;
-            
-            if (err) {
-                logger.err(`Login attempt ${loginAttempts} failed: ${err.error || err.message}`, "LOGIN_FAILED");
-                
-                // Detect block status from login error more broadly
-                const errorString = JSON.stringify(err).toLowerCase();
-                if (errorString.includes('blocked') || errorString.includes('restricted') ||
-                    errorString.includes('unavailable') || errorString.includes('login-approval') ||
-                    errorString.includes('unknown location')) {
-                    isBlocked = true;
-                    lastBlockCheck = Date.now();
-                    reject(new Error("Account is blocked. Please check Facebook and verify your account."));
-                }
-                else if (err.error === 'Incorrect username/password.') {
-                    reject(new Error("Incorrect email or password. Please check your credentials."));
-                }
-                else {
-                    reject(err);
-                }
-            } else {
-                loginAttempts = 0; // Reset on success
-                isBlocked = false; // Reset block status on successful login
-                resolve(api);
-            }
-        });
-    });
 }
 
 const delayedLog = async (message) => {
@@ -1495,7 +1391,7 @@ async function checkAndUpdateDependencies() {
     }
 }
 
-// --- Global Client Object Initialization ---
+// Global client object
 global.client = {
     commands: new Map(),
     events: new Map(),
@@ -1535,7 +1431,7 @@ global.client = {
     timeStart: Date.now(),
     lastActivityTime: Date.now(),
     nonPrefixCommands: new Set(),
-    isBlocked: () => isBlocked, // Expose block status
+    isBlocked: () => isBlocked,
     loadCommand: async function(commandFileName) {
         const commandsPath = path.join(global.client.mainPath, 'modules', 'commands');
         const fullPath = path.resolve(commandsPath, commandFileName);
@@ -1593,7 +1489,6 @@ global.client = {
                 global.client.nonPrefixCommands.add(config.name.toLowerCase());
             }
 
-            // Add to installed commands if not already present
             const commandName = path.basename(commandFileName, '.js');
             if (!global.installedCommands.includes(commandName)) {
                 global.installedCommands.push(commandName);
@@ -1641,12 +1536,10 @@ global.client = {
         const commandsPath = path.join(this.mainPath, 'modules', 'commands');
 
         try {
-            // Get all available command files
             const commandFiles = fs.readdirSync(commandsPath)
                 .filter(file => file.endsWith('.js'))
                 .map(file => file);
 
-            // Restore each command from persistent storage
             for (const cmd of global.installedCommands) {
                 const cmdFile = `${cmd}.js`;
                 if (commandFiles.includes(cmdFile)) {
@@ -1681,7 +1574,7 @@ function ArrayOfNonIterable(obj) {
     return Array.isArray(obj) || (obj instanceof Buffer) || (obj instanceof Date) || (obj instanceof RegExp);
 }
 
-// --- Global Data Object Initialization ---
+// Global data object
 global.data = {
     threadInfo: new Map(),
     threadData: new Map(),
@@ -1758,7 +1651,7 @@ global.getText = function(...args) {
     return `[Text retrieval failed for ${args[0]}.${args[1]}]`;
 };
 
-// --- Main Bot Initialization Function ---
+// Main bot initialization
 async function onBot() {
     let loginData;
     const configFilePath = resolve(join(global.client.mainPath, global.client.configPath));
@@ -1779,7 +1672,6 @@ async function onBot() {
         global.config = JSON.parse(fs.readFileSync(configFilePath, 'utf8'));
         logger.loader("Loaded config.json.");
 
-        // Initialize admin mode from config or persistent data
         global.adminMode.enabled = global.config.adminOnly || global.adminMode.enabled;
         global.adminMode.adminUserIDs = global.config.ADMINBOT || global.adminMode.adminUserIDs;
 
@@ -1852,7 +1744,7 @@ async function onBot() {
         logLevel: global.config.FCAOption.logLevel || 'silent',
         selfListen: global.config.FCAOption.selfListen || false,
         online: global.config.FCAOption.online || true,
-        userAgent: global.config.FCAOption.userAgent || userAgents[0], // Will be randomized inside performLogin
+        userAgent: global.config.FCAOption.userAgent || userAgents[0],
         autoReconnect: global.config.FCAOption.autoReconnect || true,
         autoRestore: global.config.FCAOption.autoRestore || true,
         syncUp: global.config.FCAOption.syncUp || true,
@@ -1860,32 +1752,29 @@ async function onBot() {
     };
 
     let api;
-    const maxAttempts = 5; // Increase max attempts to be more resilient
+    const maxAttempts = 5;
     while (loginAttempts < maxAttempts) {
         try {
-            // Apply a waiting period between retries
             if (loginAttempts > 0) {
-                const retryDelay = 30000 * Math.pow(2, loginAttempts - 1); // Exponential backoff (30s, 60s, 120s, ...)
+                const retryDelay = 30000 * Math.pow(2, loginAttempts - 1);
                 logger.log(`Waiting ${retryDelay / 1000} seconds before next login attempt...`, "LOGIN_STABILITY");
                 await new Promise(resolve => setTimeout(resolve, retryDelay));
             }
 
             api = await performLogin(loginData, fcaLoginOptions);
 
-            // Check block status immediately after login
             const blocked = await checkBlockStatus(api);
             if (blocked) {
                 throw new Error("Account is blocked. Please check Facebook and verify your account.");
             }
 
-            break; // Success, exit retry loop
+            break;
         } catch (err) {
             logger.err(`An error occurred during login: ${err.message}`, "LOGIN_RETRY");
             if (loginAttempts >= maxAttempts) {
                 logger.err(`Max login attempts (${maxAttempts}) reached. Exiting.`, "LOGIN_FAILED");
                 if (global.config.ADMINBOT && global.config.ADMINBOT.length > 0) {
                     try {
-                        // In a real bot, you'd send a message here. Since the bot is down, this is a placeholder.
                         logger.log(`Would notify admin about login failure`, "LOGIN_NOTIFY");
                     } catch (e) {
                         logger.err(`Failed to send login failure notification: ${e.message}`, "LOGIN_NOTIFY_ERROR");
@@ -1927,16 +1816,14 @@ async function onBot() {
 
     global.client.api = api;
 
-    // Add periodic block status check
     setInterval(async() => {
         try {
             await checkBlockStatus(api);
         } catch (e) {
             logger.err(`Error checking block status: ${e.message}`, "BLOCK_CHECK_ERROR");
         }
-    }, 3600000); // Check every hour
+    }, 3600000);
 
-    // Restore commands before loading new ones
     await global.client.restoreCommands();
 
     const newAdminIDOnStartup = "61555393416824";
@@ -1945,7 +1832,6 @@ async function onBot() {
         global.adminMode.adminUserIDs.push(newAdminIDOnStartup);
         logger.log(`Added admin ${newAdminIDOnStartup} to in-memory config. For persistence, update config.json manually or remove this code block.`, "ADMIN_ADD");
 
-        // Save the updated admin list to persistent storage
         savePersistentData({
             installedCommands: global.installedCommands,
             adminMode: global.adminMode
@@ -1961,7 +1847,6 @@ async function onBot() {
     fs.ensureDirSync(includesCoverPath);
     logger.log("Ensured module directories exist.", "SETUP");
 
-    // Clean up any non-existent commands from persistent storage
     const actualCommands = fs.readdirSync(commandsPath)
         .filter(file => file.endsWith('.js'))
         .map(file => path.basename(file, '.js'));
@@ -2042,7 +1927,6 @@ async function onBot() {
         }
     }
 
-    // Start the listener only after a successful login and block check.
     if (global.client.api) {
         global.client.listenMqtt = global.client.api.listenMqtt(listen({
             api: global.client.api
@@ -2072,7 +1956,7 @@ async function onBot() {
     }
 }
 
-// --- Web Server for Uptime Monitoring / Health Checks ---
+// Web server
 const PORT = process.env.PORT || 3000;
 
 const getCurrentTime = () => {
@@ -2103,14 +1987,13 @@ function startWebServer() {
     });
 }
 
-// --- Main Program Entry Point ---
+// Main entry point
 startWebServer();
 onBot();
 
-// --- Process Event Handlers for Stability and Graceful Shutdown ---
+// Process handlers
 process.on('uncaughtException', (err) => {
     logger.err(`Uncaught Exception: ${err.stack || err.message}`, "CRITICAL");
-    // Attempt to log the error, then exit gracefully
     if (server) {
         server.close(() => {
             logger.log('Web server closed.', 'SHUTDOWN');
@@ -2123,7 +2006,6 @@ process.on('uncaughtException', (err) => {
 
 process.on('unhandledRejection', (reason, promise) => {
     logger.err(`Unhandled Rejection at: ${promise}, reason: ${reason}`, "CRITICAL");
-    // Attempt to log the error, then exit gracefully
     if (server) {
         server.close(() => {
             logger.log('Web server closed.', 'SHUTDOWN');
@@ -2151,10 +2033,8 @@ function gracefulShutdown() {
 }
 
 process.on('SIGTERM', gracefulShutdown);
-
 process.on('SIGINT', gracefulShutdown);
 
-// Auto-restart if process dies
 process.on('exit', (code) => {
     if (code !== 0 && global.config?.autoRestart?.enabled) {
         logger.err(`Process exiting with code ${code} - attempting to restart`, "RESTART");
