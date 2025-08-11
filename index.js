@@ -2,13 +2,14 @@ const fs = require("fs-extra");
 const path = require('path');
 const { exec, spawn } = require("child_process");
 
+// Enhanced configuration with additional stability options
 const defaultConfigContent = {
-  "version": "1.0.1",
+  "version": "1.0.2",
   "language": "en",
   "email": "",
   "password": "",
   "useEnvForCredentials": false,
-  "envGuide": "When useEnvForCredentials enabled, it will use the process.env key provided for email and password, which helps hide your credentials, you can find env in render's environment tab, you can also find it in replit secrets.",
+  "envGuide": "When useEnvForCredentials enabled, it will use the process.env key provided for email and password",
   "DeveloperMode": true,
   "autoCreateDB": true,
   "allowInbox": false,
@@ -18,29 +19,23 @@ const defaultConfigContent = {
   "removeSt": false,
   "UPDATE": {
     "Package": false,
-    "EXCLUDED": [
-      "chalk",
-      "mqtt",
-      "https-proxy-agent"
-    ],
-    "Info": "This section manages the bot's automatic package updates. To disable this function, set 'Package' to false. If you only want to exclude specific packages, set them to true and add them in the 'EXCLUDED' list."
+    "EXCLUDED": ["chalk", "mqtt", "https-proxy-agent"],
+    "Info": "Automatic package updates configuration"
   },
   "commandDisabled": [],
   "eventDisabled": [],
   "BOTNAME": "Fmate💘",
   "PREFIX": "?",
-  "ADMINBOT": [
-    "61555393416824"
-  ],
+  "ADMINBOT": ["61555393416824"],
   "DESIGN": {
     "Title": "BOT CONSOLE",
     "Theme": "Blue",
-    "Admin": "Hassan",
-    "Setup": {"Info": "","Theme": ""}
+    "Admin": "Hassan"
   },
   "APPSTATEPATH": "appstate.json",
   "DEL_FUNCTION": false,
   "ADD_FUNCTION": true,
+  // Enhanced FCA options with additional stability parameters
   "FCAOption": {
     "forceLogin": false,
     "listenEvents": true,
@@ -53,7 +48,17 @@ const defaultConfigContent = {
     "autoReconnect": true,
     "autoRestore": true,
     "syncUp": true,
-    "delay": 500
+    "delay": 500,
+    "maxRetries": 5, // Added max retries for operations
+    "retryDelay": 30000, // Added delay between retries (ms)
+    "enableCookies": true, // Added cookie persistence
+    "browserArgs": [ // Added browser-like arguments
+      "--disable-notifications",
+      "--disable-infobars",
+      "--disable-web-security",
+      "--disable-features=IsolateOrigins,site-per-process",
+      "--disable-blink-features=AutomationControlled"
+    ]
   },
   "daily": { "cooldownTime": 43200000, "rewardCoin": 500 },
   "work": { "cooldownTime": 1200000 },
@@ -61,32 +66,46 @@ const defaultConfigContent = {
   "adminUpdate": { "autoUnsend": true, "sendNoti": true, "timeToUnsend": 10 },
   "adminNoti": { "autoUnsend": true, "sendNoti": true, "timeToUnsend": 10 },
   "humanLikeDelay": { "min": 2000, "max": 8000 },
-  "randomActivity": { "status": true, "intervalMin": 60, "intervalMax": 180 },
+  "randomActivity": { 
+    "status": true, 
+    "intervalMin": 60, 
+    "intervalMax": 180,
+    "activities": ["markRead", "goOffline", "scrollFeed"] // Added specific activities
+  },
   "autoRestart": {
     "enabled": true,
-    "schedule": "0 */6 * * *", // Every 6 hours
+    "schedule": "0 */6 * * *",
     "notifyAdmins": true
   },
   "heartbeat": {
     "enabled": true,
-    "interval": 300000, // 5 minutes
-    "timeout": 60000 // 1 minute
+    "interval": 300000,
+    "timeout": 60000,
+    "maxFailures": 3 // Added max failures before restart
   },
-  "unsendEmojis": ["🤓", "🚫"] // Added this configuration for unsend emojis
+  "unsendEmojis": ["🤓", "🚫"],
+  "security": { // Added security section
+    "enableProxy": false,
+    "proxyList": [],
+    "rotateUserAgent": true,
+    "enableCookiePersistence": true,
+    "enableRandomDelays": true
+  }
 };
 
-// Fixed chalk implementation with synchronous require and fallback
+// Enhanced chalk implementation with additional logging colors
 let chalk;
 try {
   chalk = require('chalk');
 } catch (e) {
-  // Fallback to simple ANSI colors if chalk can't be loaded
   chalk = {
     red: (text) => `\x1b[31m${text}\x1b[0m`,
     green: (text) => `\x1b[32m${text}\x1b[0m`,
     blue: (text) => `\x1b[34m${text}\x1b[0m`,
     yellow: (text) => `\x1b[33m${text}\x1b[0m`,
     blueBright: (text) => `\x1b[94m${text}\x1b[0m`,
+    magenta: (text) => `\x1b[35m${text}\x1b[0m`,
+    cyan: (text) => `\x1b[36m${text}\x1b[0m`,
     hex: (color) => (text) => {
       const hex = color.replace('#', '');
       const r = parseInt(hex.substring(0, 2), 16);
@@ -95,7 +114,7 @@ try {
       return `\x1b[38;2;${r};${g};${b}m${text}\x1b[0m`;
     }
   };
-  console.warn("Using fallback chalk implementation. For full features, run: npm install chalk@4.1.2");
+  console.warn(chalk.yellow("Using fallback chalk implementation. For full features, run: npm install chalk@4.1.2"));
 }
 
 const check = require("get-latest-version");
@@ -106,169 +125,200 @@ const express = require("express");
 const moment = require("moment-timezone");
 const cron = require("node-cron");
 const axios = require('axios');
-const login = require('nexus-fca');
+const login = require('hassan-fca');
+const puppeteer = require('puppeteer-extra'); // Added puppeteer for alternative login
+const StealthPlugin = require('puppeteer-extra-plugin-stealth'); // Added stealth plugin
 
-// ======== UTILITY FUNCTIONS ========
+// Apply stealth plugin for puppeteer
+puppeteer.use(StealthPlugin());
+
+// Enhanced utility functions for Facebook automation
 global.utils = {
-  findUid: async function (url) {
-    if (!url.startsWith("http")) {
-      url = "https://" + url;
-    }
-
-    const fbRegex = /(?:https?:\/\/)?(?:www\.|m\.)?(facebook|fb)\.(com|me)\/(?:profile\.php\?id=(\d+)|([a-zA-Z0-9.\-_]+))/;
-    const match = url.match(fbRegex);
-
-    if (!match) {
-      const error = new Error("Invalid Facebook link");
-      error.name = "InvalidLink";
-      throw error;
-    }
-
-    const usernameOrId = match[3] || match[4];
-    if (!usernameOrId) {
-      const error = new Error("Could not extract ID or username");
-      error.name = "CannotGetData";
-      throw error;
-    }
-
+  // Enhanced UID finder with better error handling
+  findUid: async function(url) {
+    if (!url) throw new Error("URL is required");
+    
     try {
-      const res = await axios.get(`https://graph.facebook.com/${usernameOrId}?fields=id&access_token=350685531728|62f8ce9f74b12f84c123cc23437a4a32`);
-      if (!res.data || !res.data.id) {
-        const error = new Error("Profile doesn't exist");
-        error.name = "LinkNotExist";
-        throw error;
+      if (!url.startsWith("http")) url = "https://" + url;
+      
+      const fbRegex = /(?:https?:\/\/)?(?:www\.|m\.)?(facebook|fb)\.(com|me)\/(?:profile\.php\?id=(\d+)|([a-zA-Z0-9.\-_]+))/;
+      const match = url.match(fbRegex);
+      
+      if (!match) throw new Error("Invalid Facebook URL format");
+      
+      const usernameOrId = match[3] || match[4];
+      if (!usernameOrId) throw new Error("Could not extract ID or username from URL");
+      
+      // Try multiple endpoints for better reliability
+      const endpoints = [
+        `https://graph.facebook.com/${usernameOrId}?fields=id&access_token=350685531728|62f8ce9f74b12f84c123cc23437a4a32`,
+        `https://graph.facebook.com/v15.0/${usernameOrId}?fields=id&access_token=6628568379|c1e620fa708a1d5696fb991c1bde5662`
+      ];
+      
+      for (const endpoint of endpoints) {
+        try {
+          const res = await axios.get(endpoint, { timeout: 10000 });
+          if (res.data?.id) return res.data.id;
+        } catch (e) {
+          console.warn(`Failed with endpoint ${endpoint}: ${e.message}`);
+        }
       }
-      return res.data.id;
+      
+      throw new Error("All API endpoints failed to resolve UID");
     } catch (err) {
-      const error = new Error("Failed to fetch UID");
-      error.name = "CannotGetData";
-      throw error;
+      logger.err(`Failed to find UID: ${err.message}`, "UID_ERROR");
+      throw err;
     }
-  }
-};
+  },
 
-// ======== ENHANCED PERSISTENT STORAGE SYSTEM ========
-const DATA_DIR = path.join(__dirname, 'data');
-const PERSISTENT_FILE = path.join(DATA_DIR, 'persistent.json');
-
-// Ensure data directory exists
-fs.ensureDirSync(DATA_DIR);
-
-function loadPersistentData() {
-  try {
-    if (fs.existsSync(PERSISTENT_FILE)) {
-      const data = JSON.parse(fs.readFileSync(PERSISTENT_FILE, 'utf8'));
-      // Validate loaded data structure
-      if (!data.installedCommands || !Array.isArray(data.installedCommands)) {
-        data.installedCommands = [];
-      }
-      if (!data.adminMode || typeof data.adminMode !== 'object') {
-        data.adminMode = { enabled: false, adminUserIDs: [] };
-      }
-      return data;
+  // Enhanced human delay with randomization
+  humanDelay: async (customMin, customMax) => {
+    const config = global.config || defaultConfigContent;
+    const min = customMin || config.humanLikeDelay.min;
+    const max = customMax || config.humanLikeDelay.max;
+    const delay = Math.floor(Math.random() * (max - min + 1)) + min;
+    
+    if (config.security?.enableRandomDelays !== false) {
+      logger.log(`Adding human-like delay of ${delay}ms...`, "DELAY");
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
-  } catch (e) {
-    console.error("Error loading persistent data:", e);
-  }
-  return {
-    installedCommands: [],
-    adminMode: {
-      enabled: false,
-      adminUserIDs: []
-    }
-  };
-}
-
-// This is the ONLY savePersistentData function - remove any other declarations
-function savePersistentData(data) {
-  try {
-    // Ensure we're only saving valid data
-    const saveData = {
-      installedCommands: Array.isArray(data.installedCommands) ? data.installedCommands : [],
-      adminMode: {
-        enabled: !!data.adminMode?.enabled,
-        adminUserIDs: Array.isArray(data.adminMode?.adminUserIDs) ? data.adminMode.adminUserIDs : []
-      }
-    };
-    fs.writeFileSync(PERSISTENT_FILE, JSON.stringify(saveData, null, 2));
     return true;
-  } catch (e) {
-    console.error("Error saving persistent data:", e);
-    return false;
-  }
-}
-
-// Load persistent data at startup
-const persistentData = loadPersistentData();
-
-// ======== ADD CREATOR PROTECTION HERE ========
-const CREATOR_NAME = "Hassan";
-let creatorName = CREATOR_NAME;
-
-function protectCreatorName() {
-  if (creatorName !== CREATOR_NAME) {
-    console.error(`\x1b[31mCRITICAL ERROR: CREATOR NAME CHANGED FROM "${CREATOR_NAME}" TO "${creatorName}"\x1b[0m`);
-    console.error(`\x1b[31mTHIS IS NOT ALLOWED. THE BOT WILL NOW CRASH.\x1b[0m`);
-    process.exit(1);
-  }
-}
-
-// Display creator name at startup (now using the properly initialized chalk)
-console.log(chalk.blueBright(`\n========================================`));
-console.log(chalk.blueBright(`=                                      =`));
-console.log(chalk.blueBright(`=        BOT CREATOR: ${CREATOR_NAME}${' '.repeat(15 - CREATOR_NAME.length)}=`));
-console.log(chalk.blueBright(`=                                      =`));
-console.log(chalk.blueBright(`========================================\n`));
-
-// Periodic creator name checks
-setInterval(protectCreatorName, 60000); // Check every minute
-// ======== END OF CREATOR PROTECTION ========
-
-// Define defaultEmojiTranslate early so it's accessible globally and for config.json init
-const defaultEmojiTranslate = "🌐";
-
-// Global adminMode object - initialized from persistent data
-global.adminMode = persistentData.adminMode || {
-    enabled: false,
-    adminUserIDs: []
-};
-
-// Track installed commands from persistent data
-global.installedCommands = persistentData.installedCommands || [];
-
-// --- Logger ---
-const getThemeColors = () => {
-  return {
-    cra: chalk.hex("#FF0000"),
-    cv: chalk.hex("#00FFFF"),
-    cb: chalk.hex("#0000FF"),
-  };
-};
-
-const logger = {
-  log: (message, tag = "INFO") => {
-    protectCreatorName();
-    const { cv } = getThemeColors();
-    console.log(`${cv(`[${tag}]`)} ${message}`);
   },
-  loader: (message, tag = "LOADER") => {
-    protectCreatorName();
-    const { cb } = getThemeColors();
-    console.log(`${cb(`[${tag}]`)} ${message}`);
-  },
-  err: (message, tag = "ERROR") => {
-    protectCreatorName();
-    const { cra } = getThemeColors();
-    console.error(`${cra(`[${tag}]`)} ${message}`);
-  },
-  warn: (message, tag = "WARN") => {
-    protectCreatorName();
-    console.warn(`${chalk.hex("#FFA500")(`[${tag}]`)} ${message}`);
-  }
-};
 
-// --- Utilities ---
-const utils = {
+  // Enhanced session management
+  saveSession: async (api, filePath = "appstate.json") => {
+    try {
+      if (!api.getAppState) {
+        throw new Error("API does not support getAppState");
+      }
+      
+      const appState = api.getAppState();
+      if (!appState || !Array.isArray(appState)) {
+        throw new Error("Invalid appState format");
+      }
+      
+      let data = JSON.stringify(appState, null, 2);
+      
+      if (global.config.encryptSt) {
+        const key = process.env.REPL_OWNER || process.env.PROCESSOR_IDENTIFIER || "default-encryption-key";
+        data = await utils.encryptState(data, key);
+      }
+      
+      await fs.writeFile(filePath, data);
+      logger.log("Session saved successfully", "SESSION");
+      return true;
+    } catch (err) {
+      logger.err(`Failed to save session: ${err.message}`, "SESSION_ERROR");
+      return false;
+    }
+  },
+
+  // Enhanced login with puppeteer fallback
+  enhancedLogin: async (credentials, options = {}) => {
+    const maxAttempts = options.maxRetries || 3;
+    const retryDelay = options.retryDelay || 30000;
+    
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        logger.log(`Attempting login (attempt ${attempt}/${maxAttempts})`, "LOGIN");
+        
+        // Try primary login method first
+        const api = await performLogin(credentials, options);
+        
+        // Verify login success
+        await verifyLogin(api);
+        
+        logger.log("Login successful", "LOGIN_SUCCESS");
+        return api;
+      } catch (err) {
+        logger.err(`Login attempt ${attempt} failed: ${err.message}`, "LOGIN_FAIL");
+        
+        if (attempt >= maxAttempts) {
+          logger.log("Falling back to puppeteer login", "LOGIN_FALLBACK");
+          return await puppeteerLogin(credentials);
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
+    }
+  },
+
+  // Puppeteer-based login as fallback
+  puppeteerLogin: async ({ email, password }) => {
+    logger.log("Starting puppeteer login process", "PUPPETEER_LOGIN");
+    
+    try {
+      const browser = await puppeteer.launch({
+        headless: false,
+        args: global.config.FCAOption.browserArgs || []
+      });
+      
+      const page = await browser.newPage();
+      
+      // Set realistic viewport and user agent
+      await page.setViewport({ width: 1366, height: 768 });
+      await page.setUserAgent(global.config.FCAOption.userAgent || userAgents[0]);
+      
+      // Navigate to Facebook with realistic delays
+      await page.goto('https://facebook.com', { 
+        waitUntil: 'networkidle2',
+        timeout: 60000 
+      });
+      await utils.humanDelay(2000, 5000);
+      
+      // Fill login form with human-like typing
+      await page.type('#email', email, { delay: 100 });
+      await utils.humanDelay(500, 1500);
+      await page.type('#pass', password, { delay: 80 });
+      await utils.humanDelay(1000, 3000);
+      
+      // Click login button
+      await page.click('[name="login"]');
+      await utils.humanDelay(5000, 10000);
+      
+      // Wait for login completion
+      try {
+        await page.waitForNavigation({ timeout: 30000 });
+      } catch (e) {
+        logger.warn("Navigation timeout exceeded, continuing anyway", "LOGIN_WARN");
+      }
+      
+      // Get cookies and convert to appstate format
+      const cookies = await page.cookies();
+      const appState = cookies.map(cookie => ({
+        key: cookie.name,
+        value: cookie.value,
+        domain: cookie.domain,
+        path: cookie.path,
+        expires: cookie.expires,
+        secure: cookie.secure,
+        httponly: cookie.httpOnly
+      }));
+      
+      // Save the session
+      await utils.saveSession({ getAppState: () => appState });
+      
+      await browser.close();
+      
+      // Return API instance using the new appstate
+      return await performLogin({ appState }, global.config.FCAOption);
+    } catch (err) {
+      logger.err(`Puppeteer login failed: ${err.message}`, "PUPPETEER_LOGIN_FAIL");
+      throw err;
+    }
+  },
+
+  // Verify login status
+  verifyLogin: async (api) => {
+    try {
+      await api.getThreadList(1, null, ['INBOX']);
+      return true;
+    } catch (err) {
+      throw new Error(`Login verification failed: ${err.message}`);
+    }
+  },
+
+  // Rest of your utility functions...
   decryptState: (encryptedState, key) => {
     logger.warn("DecryptState is a placeholder. Implement actual decryption if 'encryptSt' is true.", "DECRYPT_WARN");
     return encryptedState;
@@ -276,24 +326,6 @@ const utils = {
   encryptState: (state, key) => {
     logger.warn("EncryptState is a placeholder. Implement actual encryption if 'encryptSt' is true.", "ENCRYPT_WARN");
     return state;
-  },
-  humanDelay: async () => {
-    const currentConfig = global.config || defaultConfigContent;
-    const min = currentConfig.humanLikeDelay.min;
-    const max = currentConfig.humanLikeDelay.max;
-    const delay = Math.floor(Math.random() * (max - min + 1)) + min;
-    logger.log(`Adding human-like delay of ${delay}ms...`, "DELAY");
-    return new Promise(resolve => setTimeout(resolve, delay));
-  },
-  findUid: async (profileUrl) => {
-    logger.warn(`[WARNING] global.utils.findUid is a placeholder. It needs a proper implementation to resolve Facebook profile URLs.`, "UID_WARN");
-    if (profileUrl && profileUrl.includes("facebook.com/profile.php?id=")) {
-        const match = profileUrl.match(/id=(\d+)/);
-        if (match && match[1]) {
-            return match[1];
-        }
-    }
-    throw new Error("Could not find UID for the provided link. global.utils.findUid requires implementation.");
   },
   restartBot: async (api, reason = "Scheduled restart") => {
     logger.warn(`Restarting bot: ${reason}`, "RESTART");
@@ -331,7 +363,6 @@ const utils = {
     });
     process.exit();
   },
-  // FIXED HEARTBEAT FUNCTION - CORRECTED SYNTAX ERROR
   checkHeartbeat: async (api) => {
     if (!global.config.heartbeat?.enabled) return true;
     
@@ -356,76 +387,253 @@ const utils = {
   }
 };
 
-// --- Thread Data Manager ---
+// Enhanced persistent storage system
+const DATA_DIR = path.join(__dirname, 'data');
+const PERSISTENT_FILE = path.join(DATA_DIR, 'persistent.json');
+const SESSION_FILE = path.join(DATA_DIR, 'session_backup.json');
+
+// Ensure data directory exists
+fs.ensureDirSync(DATA_DIR);
+
+function loadPersistentData() {
+  try {
+    if (fs.existsSync(PERSISTENT_FILE)) {
+      const data = JSON.parse(fs.readFileSync(PERSISTENT_FILE, 'utf8'));
+      
+      // Validate and migrate data if needed
+      if (!data.installedCommands || !Array.isArray(data.installedCommands)) {
+        data.installedCommands = [];
+      }
+      if (!data.adminMode || typeof data.adminMode !== 'object') {
+        data.adminMode = { enabled: false, adminUserIDs: [] };
+      }
+      if (!data.sessions) {
+        data.sessions = {};
+      }
+      
+      return data;
+    }
+  } catch (e) {
+    logger.err(`Error loading persistent data: ${e.message}`, "STORAGE_ERROR");
+  }
+  
+  return {
+    installedCommands: [],
+    adminMode: { enabled: false, adminUserIDs: [] },
+    sessions: {}
+  };
+}
+
+// Enhanced save function with session backup
+function savePersistentData(data) {
+  try {
+    // Prepare data to save
+    const saveData = {
+      installedCommands: Array.isArray(data.installedCommands) ? data.installedCommands : [],
+      adminMode: {
+        enabled: !!data.adminMode?.enabled,
+        adminUserIDs: Array.isArray(data.adminMode?.adminUserIDs) ? data.adminMode.adminUserIDs : []
+      },
+      sessions: data.sessions || {}
+    };
+    
+    // Save main persistent file
+    fs.writeFileSync(PERSISTENT_FILE, JSON.stringify(saveData, null, 2));
+    
+    // Create session backup if appstate exists
+    if (fs.existsSync('appstate.json')) {
+      const appState = fs.readFileSync('appstate.json', 'utf8');
+      saveData.sessions.lastAppState = appState;
+      fs.writeFileSync(SESSION_FILE, JSON.stringify(saveData, null, 2));
+    }
+    
+    return true;
+  } catch (e) {
+    logger.err(`Error saving persistent data: ${e.message}`, "STORAGE_ERROR");
+    return false;
+  }
+}
+
+// Load persistent data at startup
+const persistentData = loadPersistentData();
+
+// Creator protection (keep your existing implementation)
+const CREATOR_NAME = "Hassan";
+let creatorName = CREATOR_NAME;
+
+function protectCreatorName() {
+  if (creatorName !== CREATOR_NAME) {
+    console.error(chalk.red(`CRITICAL ERROR: CREATOR NAME CHANGED FROM "${CREATOR_NAME}" TO "${creatorName}"`));
+    console.error(chalk.red("THIS IS NOT ALLOWED. THE BOT WILL NOW CRASH."));
+    process.exit(1);
+  }
+}
+
+// Enhanced logger with more features
+const logger = {
+  log: (message, tag = "INFO") => {
+    protectCreatorName();
+    const timestamp = moment().format("YYYY-MM-DD HH:mm:ss");
+    console.log(`[${timestamp}] ${chalk.blue(`[${tag}]`)} ${message}`);
+  },
+  loader: (message, tag = "LOADER") => {
+    protectCreatorName();
+    const timestamp = moment().format("YYYY-MM-DD HH:mm:ss");
+    console.log(`[${timestamp}] ${chalk.cyan(`[${tag}]`)} ${message}`);
+  },
+  err: (message, tag = "ERROR") => {
+    protectCreatorName();
+    const timestamp = moment().format("YYYY-MM-DD HH:mm:ss");
+    console.error(`[${timestamp}] ${chalk.red(`[${tag}]`)} ${message}`);
+  },
+  warn: (message, tag = "WARN") => {
+    protectCreatorName();
+    const timestamp = moment().format("YYYY-MM-DD HH:mm:ss");
+    console.warn(`[${timestamp}] ${chalk.yellow(`[${tag}]`)} ${message}`);
+  },
+  debug: (message, tag = "DEBUG") => {
+    if (global.config?.DeveloperMode) {
+      protectCreatorName();
+      const timestamp = moment().format("YYYY-MM-DD HH:mm:ss");
+      console.log(`[${timestamp}] ${chalk.magenta(`[${tag}]`)} ${message}`);
+    }
+  }
+};
+
+// Enhanced thread data manager with backup
 function createThreadDataManager() {
     const threadDataStore = new Map();
-
+    const backupInterval = 3600000; // 1 hour
+    
+    // Periodic backup
+    setInterval(() => {
+        try {
+            const backupFile = path.join(DATA_DIR, 'thread_data_backup.json');
+            const backupData = Array.from(threadDataStore.entries());
+            fs.writeFileSync(backupFile, JSON.stringify(backupData, null, 2));
+            logger.debug("Thread data backup completed", "DATA_BACKUP");
+        } catch (e) {
+            logger.err(`Thread data backup failed: ${e.message}`, "DATA_BACKUP_ERROR");
+        }
+    }, backupInterval);
+    
     return {
         get: async (threadID, path) => {
-            let current = threadDataStore.get(threadID);
-            if (!current) return undefined;
-
-            const pathParts = path.split('.');
-            for (const part of pathParts) {
-                if (current && typeof current === 'object' && current.has(part)) {
-                    current = current.get(part);
-                } else {
-                    return undefined;
+            try {
+                let current = threadDataStore.get(threadID);
+                if (!current) return undefined;
+                
+                const pathParts = path.split('.');
+                for (const part of pathParts) {
+                    if (current && typeof current === 'object' && current.has(part)) {
+                        current = current.get(part);
+                    } else {
+                        return undefined;
+                    }
                 }
+                return current;
+            } catch (e) {
+                logger.err(`Error getting thread data: ${e.message}`, "THREAD_DATA_ERROR");
+                return undefined;
             }
-            return current;
         },
         set: async (threadID, value, path) => {
-            if (!threadDataStore.has(threadID)) {
-                threadDataStore.set(threadID, new Map());
-            }
-            let current = threadDataStore.get(threadID);
-            const pathParts = path.split('.');
-            for (let i = 0; i < pathParts.length; i++) {
-                const part = pathParts[i];
-                if (i === pathParts.length - 1) {
-                    current.set(part, value);
-                } else {
-                    if (!current.has(part) || !(current.get(part) instanceof Map)) {
-                        current.set(part, new Map());
-                    }
-                    current = current.get(part);
+            try {
+                if (!threadDataStore.has(threadID)) {
+                    threadDataStore.set(threadID, new Map());
                 }
+                
+                let current = threadDataStore.get(threadID);
+                const pathParts = path.split('.');
+                
+                for (let i = 0; i < pathParts.length; i++) {
+                    const part = pathParts[i];
+                    if (i === pathParts.length - 1) {
+                        current.set(part, value);
+                    } else {
+                        if (!current.has(part) || !(current.get(part) instanceof Map)) {
+                            current.set(part, new Map());
+                        }
+                        current = current.get(part);
+                    }
+                }
+                return true;
+            } catch (e) {
+                logger.err(`Error setting thread data: ${e.message}`, "THREAD_DATA_ERROR");
+                return false;
             }
         },
         delete: async (threadID, path) => {
-            let current = threadDataStore.get(threadID);
-            if (!current) return;
-
-            const pathParts = path.split('.');
-            for (let i = 0; i < pathParts.length; i++) {
-                const part = pathParts[i];
-                if (i === pathParts.length - 1) {
-                    current.delete(part);
-                } else {
-                    if (!current.has(part) || !(current.get(part) instanceof Map)) {
-                        return;
+            try {
+                let current = threadDataStore.get(threadID);
+                if (!current) return false;
+                
+                const pathParts = path.split('.');
+                for (let i = 0; i < pathParts.length; i++) {
+                    const part = pathParts[i];
+                    if (i === pathParts.length - 1) {
+                        current.delete(part);
+                    } else {
+                        if (!current.has(part) || !(current.get(part) instanceof Map)) {
+                            return false;
+                        }
+                        current = current.get(part);
                     }
-                    current = current.get(part);
                 }
+                
+                if (threadDataStore.get(threadID)?.size === 0) {
+                    threadDataStore.delete(threadID);
+                }
+                return true;
+            } catch (e) {
+                logger.err(`Error deleting thread data: ${e.message}`, "THREAD_DATA_ERROR");
+                return false;
             }
-            if (threadDataStore.get(threadID)?.size === 0) {
-                threadDataStore.delete(threadID);
+        },
+        backup: () => {
+            return Array.from(threadDataStore.entries());
+        },
+        restore: (backupData) => {
+            try {
+                threadDataStore.clear();
+                for (const [key, value] of backupData) {
+                    threadDataStore.set(key, value);
+                }
+                return true;
+            } catch (e) {
+                logger.err(`Error restoring thread data: ${e.message}`, "THREAD_DATA_ERROR");
+                return false;
             }
         }
     };
 }
 
-// --- Listener Function ---
+// Enhanced listener function with better error handling
 const listen = ({ api }) => {
     return async (error, event) => {
         try {
-            await new Promise(resolve => setTimeout(resolve, Math.random() * 500 + 100));
-
+            // Add initial delay to mimic human behavior
+            await utils.humanDelay();
+            
             if (error) {
                 logger.err(`Listen error: ${error.message}`, "LISTENER_ERROR");
+                
+                // Handle specific error cases
                 if (error.error === 'Not logged in' || error.error === 'Login approval needed') {
-                    logger.warn("Bot session expired or invalid. Attempting to re-login via FCA's autoReconnect. If persistent, check appstate.json.", "SESSION_EXPIRED");
+                    logger.warn("Session expired or invalid. Attempting to re-login...", "SESSION_EXPIRED");
+                    
+                    // Try to re-login automatically
+                    try {
+                        const newApi = await utils.enhancedLogin(
+                            { appState: api.getAppState() },
+                            global.config.FCAOption
+                        );
+                        global.client.api = newApi;
+                        logger.log("Re-login successful", "SESSION_RESTORED");
+                        return;
+                    } catch (loginErr) {
+                        logger.err(`Re-login failed: ${loginErr.message}`, "SESSION_RESTORE_FAIL");
+                    }
                 }
                 return;
             }
@@ -438,7 +646,7 @@ const listen = ({ api }) => {
 
             // Skip processing if event is missing required properties
             if (!event.type && !event.logMessageType) {
-                logger.err("Event missing type information", "EVENT_VALIDATION");
+                logger.debug("Event missing type information - skipping", "EVENT_VALIDATION");
                 return;
             }
 
@@ -498,7 +706,7 @@ const listen = ({ api }) => {
                     return;
                 }
 
-                // NEW CODE: Handle unsend emoji reactions
+                // Handle unsend emoji reactions
                 const currentConfig = global.config || defaultConfigContent;
                 const unsendEmojis = currentConfig.unsendEmojis || ["🤓", "🚫"];
                 
@@ -575,7 +783,7 @@ const listen = ({ api }) => {
                 return;
             }
 
-            // 🟢 Ensure global.api and global.api.handleReply are initialized properly
+            // Ensure global.api and global.api.handleReply are initialized properly
             global.api = api;
             global.api.handleReply = global.api.handleReply || new Map();
 
@@ -935,95 +1143,129 @@ const listen = ({ api }) => {
     };
 };
 
-// --- Custom Scheduled Scripts / Background Tasks ---
+// Enhanced custom scripts with better scheduling
 const customScript = ({ api }) => {
-    logger.log("Running custom script...", "CUSTOM");
-
-    // Auto-accept pending messages
+    logger.log("Initializing enhanced custom scripts...", "CUSTOM_SCRIPTS");
+    
+    // Auto-accept pending messages with better error handling
     const acceptPendingConfig = {
         status: true,
         time: 30,
+        maxAttempts: 3
     };
 
     function acceptPending(config) {
         if (config.status) {
             cron.schedule(`*/${config.time} * * * *`, async () => {
-                try {
-                    const list = [
-                        ...(await api.getThreadList(1, null, ['PENDING'])),
-                        ...(await api.getThreadList(1, null, ['OTHER'])),
-                    ];
-                    if (list[0]) {
-                        await utils.humanDelay();
-                        await api.sendMessage('You have been approved for the queue. (This is an automated message)', list[0].threadID);
-                        logger.log(`Approved pending thread: ${list[0].threadID}`, "AUTO_PENDING");
-                    } else {
-                        logger.log("No pending threads to approve.", "AUTO_PENDING");
+                let attempts = 0;
+                let success = false;
+                
+                while (attempts < config.maxAttempts && !success) {
+                    try {
+                        attempts++;
+                        const list = [
+                            ...(await api.getThreadList(1, null, ['PENDING'])),
+                            ...(await api.getThreadList(1, null, ['OTHER']))
+                        ];
+                        
+                        if (list[0]) {
+                            await utils.humanDelay();
+                            await api.sendMessage(
+                                'You have been approved for the queue. (This is an automated message)', 
+                                list[0].threadID
+                            );
+                            logger.log(`Approved pending thread: ${list[0].threadID}`, "AUTO_PENDING");
+                            success = true;
+                        } else {
+                            logger.debug("No pending threads to approve", "AUTO_PENDING");
+                            success = true; // No threads is not an error
+                        }
+                    } catch (e) {
+                        logger.err(`Error accepting pending messages (attempt ${attempts}/${config.maxAttempts}): ${e.message}`, "AUTO_PENDING_ERROR");
+                        if (attempts < config.maxAttempts) {
+                            await utils.humanDelay(5000, 10000);
+                        }
                     }
-                } catch (e) {
-                    logger.err(`Error accepting pending messages: ${e.message}`, "AUTO_PENDING_ERROR");
                 }
+            }, {
+                scheduled: true,
+                timezone: "Asia/Dhaka"
             });
         }
     }
+    
     acceptPending(acceptPendingConfig);
 
-    // Random human-like activity
-    if (global.config.randomActivity.status) {
+    // Enhanced random activity with more options
+    if (global.config.randomActivity?.status) {
         cron.schedule('*/1 * * * *', async () => {
-            const minInterval = global.config.randomActivity.intervalMin;
-            const maxInterval = global.config.randomActivity.intervalMax;
-            const randomMinutes = Math.floor(Math.random() * (maxInterval - minInterval + 1)) + minInterval;
+            try {
+                const minInterval = global.config.randomActivity.intervalMin;
+                const maxInterval = global.config.randomActivity.intervalMax;
+                const randomMinutes = Math.floor(Math.random() * (maxInterval - minInterval + 1)) + minInterval;
 
-            if (Date.now() - global.client.lastActivityTime > randomMinutes * 60 * 1000) {
-                try {
+                if (Date.now() - global.client.lastActivityTime > randomMinutes * 60 * 1000) {
                     logger.log("Performing random human-like activity...", "ACTIVITY");
-                    const threadList = await api.getThreadList(5, null, ['INBOX']);
+                    
+                    // Get threads with error handling
+                    let threadList;
+                    try {
+                        threadList = await api.getThreadList(5, null, ['INBOX']);
+                    } catch (e) {
+                        logger.err(`Error getting thread list: ${e.message}`, "ACTIVITY_ERROR");
+                        return;
+                    }
+
                     if (threadList.length > 0) {
                         const randomThread = threadList[Math.floor(Math.random() * threadList.length)];
-
-                        const activities = [
-                            async () => {
+                        const activities = [];
+                        
+                        // Build activity list based on config
+                        if (global.config.randomActivity.activities.includes("markRead")) {
+                            activities.push(async () => {
                                 await utils.humanDelay();
-                                await api.setOptions({ online: false });
-                                logger.log("Temporarily set bot offline.", "ACTIVITY");
-                                await new Promise(resolve => setTimeout(resolve, Math.random() * 5000 + 2000));
-                                await utils.humanDelay();
-                                await api.setOptions({ online: true });
-                                logger.log("Set bot back online.", "ACTIVITY");
-                            },
-                            async () => {
-                                await utils.humanDelay();
-                                const messages = await api.getThreadHistory(randomThread.threadID, 5);
-                                if (messages && messages.length > 0) {
-                                    const unreadMessages = messages.filter(msg => !msg.isRead);
-                                    if (unreadMessages.length > 0) {
-                                        const randomUnreadMessage = unreadMessages[Math.floor(Math.random() * unreadMessages.length)];
-                                        await utils.humanDelay();
-                                        await api.markAsRead(randomUnreadMessage.messageID);
-                                        logger.log(`Marked message ${randomUnreadMessage.messageID} in thread ${randomThread.threadID} as read.`, "ACTIVITY");
-                                    } else {
-                                        logger.log(`No unread messages in thread ${randomThread.threadID} for marking as read.`, "ACTIVITY");
+                                try {
+                                    const messages = await api.getThreadHistory(randomThread.threadID, 5);
+                                    if (messages?.length > 0) {
+                                        const unreadMessages = messages.filter(msg => !msg.isRead);
+                                        if (unreadMessages.length > 0) {
+                                            const msg = unreadMessages[Math.floor(Math.random() * unreadMessages.length)];
+                                            await api.markAsRead(msg.messageID);
+                                            logger.log(`Marked message as read in thread ${randomThread.threadID}`, "ACTIVITY");
+                                        }
                                     }
-                                } else {
-                                    logger.log(`No messages in thread ${randomThread.threadID} for activity.`, "ACTIVITY");
+                                } catch (e) {
+                                    logger.err(`Error marking as read: ${e.message}`, "ACTIVITY_ERROR");
                                 }
-                            }
-                        ];
-
+                            });
+                        }
+                        
+                        if (global.config.randomActivity.activities.includes("goOffline")) {
+                            activities.push(async () => {
+                                await utils.humanDelay();
+                                try {
+                                    await api.setOptions({ online: false });
+                                    logger.log("Temporarily set bot offline", "ACTIVITY");
+                                    await utils.humanDelay(3000, 8000);
+                                    await api.setOptions({ online: true });
+                                    logger.log("Set bot back online", "ACTIVITY");
+                                } catch (e) {
+                                    logger.err(`Error changing online status: ${e.message}`, "ACTIVITY_ERROR");
+                                }
+                            });
+                        }
+                        
+                        // Add more activities as needed...
+                        
                         if (activities.length > 0) {
                             const randomActivity = activities[Math.floor(Math.random() * activities.length)];
                             await randomActivity();
                             global.client.lastActivityTime = Date.now();
-                        } else {
-                            logger.log("No random activities available after filtering.", "ACTIVITY");
                         }
-                    } else {
-                        logger.log("No threads found for random activity.", "ACTIVITY");
                     }
-                } catch (e) {
-                    logger.err(`Error performing random activity: ${e.message}`, "ACTIVITY_ERROR");
                 }
+            } catch (e) {
+                logger.err(`Error in random activity scheduler: ${e.message}`, "ACTIVITY_ERROR");
             }
         }, {
             scheduled: true,
@@ -1032,7 +1274,7 @@ const customScript = ({ api }) => {
     }
 
     // Auto-restart schedule
-    if (global.config.autoRestart && global.config.autoRestart.enabled) {
+    if (global.config.autoRestart?.enabled) {
         cron.schedule(global.config.autoRestart.schedule, async () => {
             await utils.restartBot(api, "Scheduled restart");
         }, {
@@ -1044,7 +1286,7 @@ const customScript = ({ api }) => {
     // Heartbeat monitoring
     if (global.config.heartbeat?.enabled) {
         const interval = global.config.heartbeat.interval || 300000; // Default 5 minutes
-        const maxFailedAttempts = 3;
+        const maxFailedAttempts = global.config.heartbeat.maxFailures || 3;
         let failedAttempts = 0;
 
         setInterval(async () => {
@@ -1074,12 +1316,11 @@ const customScript = ({ api }) => {
     }
 };
 
-
 // --- Appstate Management and Login ---
 const appStatePlaceholder = "(›^-^)›";
 const fbstateFile = "appstate.json";
 
-// NEW: User-agent list for randomization
+// User-agent list for randomization
 const userAgents = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
@@ -1090,7 +1331,7 @@ const userAgents = [
     "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1"
 ];
 
-// NEW: Login stability variables
+// Login stability variables
 let loginAttempts = 0;
 let isLoggingIn = false;
 let lastLoginAttempt = 0;
@@ -1098,7 +1339,7 @@ let isBlocked = false;
 let lastBlockCheck = 0;
 let server = null; // Variable to hold the Express server instance
 
-// NEW: Function to check if account is blocked
+// Function to check if account is blocked
 async function checkBlockStatus(api) {
     try {
         // Check if we've recently checked block status
@@ -1131,7 +1372,7 @@ async function checkBlockStatus(api) {
     }
 }
 
-// NEW: Enhanced login function with retry logic and block detection
+// Enhanced login function with retry logic and block detection
 async function performLogin(loginData, fcaLoginOptions) {
     return new Promise((resolve, reject) => {
         if (isLoggingIn) {
@@ -1160,7 +1401,7 @@ async function performLogin(loginData, fcaLoginOptions) {
             }
         }
         
-        // NEW: Select a random user agent for this login attempt
+        // Select a random user agent for this login attempt
         const randomUserAgent = userAgents[Math.floor(Math.random() * userAgents.length)];
         fcaLoginOptions.userAgent = randomUserAgent;
         logger.log(`Using User-Agent: ${randomUserAgent}`, "USER_AGENT");
@@ -1516,7 +1757,6 @@ global.getText = function(...args) {
     }
     return `[Text retrieval failed for ${args[0]}.${args[1]}]`;
 };
-
 
 // --- Main Bot Initialization Function ---
 async function onBot() {

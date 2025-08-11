@@ -1,0 +1,124 @@
+
+> Trex v20.25@1.0.0 start
+> node index.js
+
+ℹ️ Using hassan-fca.json configuration
+[2025-08-11 00:55:50] [LOADER] Loaded config.json.
+[2025-08-11 00:55:50] [LOADER] Found appstate.json.
+[2025-08-11 00:55:50] [LOGIN_METHOD] Using appstate.json for login (recommended).
+[2025-08-11 00:55:50] [LOGIN_ATTEMPT] Attempting login (attempt 1/5)
+[2025-08-11 00:55:50] [USER_AGENT] Using User-Agent: Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.6422.113 Mobile Safari/537.36
+[2025-08-11 00:55:51] [APPSTATE_SAVE] Appstate updated and saved successfully.
+[2025-08-11 00:55:51] [SETUP] Ensured module directories exist.
+
+──LOADING COMMANDS─●
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED acp (acp.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED adduser (adduser.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED admin (admin.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED adminmode (adminmode.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED ai (ai.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED anim (anim.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED animagine (animagine.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED animeimg (animeimg.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED approve (approve.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED ask (ask.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED autocmdload (autocmdload.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED bal (bal.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED bbc (bbc.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED botteam (botteam.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED bra (bra.js) success
+[2025-08-11 00:55:51] [LANG_LOAD] Loaded language strings for 'en' from module 'callad'.
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED callad (callad.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED catfact (catfact.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED cmdsload (cmdsload.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED cstory (cstory.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED daily (daily.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED dalle3 (dalle3.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED delete (delete.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED dictionary (dictionary.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED edit (edit.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED editimg (editimg.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED extractaudio (extractaudio.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED extractaudio2 (extractaudio2.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED fastgen (fastgen.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED flux (flux.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED flux2 (flux2.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED gemini (gemini.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED gen (gen.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED genimage (genimage.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED gprompt (gprompt.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED gpt (gpt.js) success
+[2025-08-11 00:55:51] [COMMAND_LOAD] LOADED gpt3 (gpt3.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED help (help.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED imgbb (imgbb.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED imgpromt (imgpromt.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED install (install.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED install2 (install2.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED joke (joke.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED kick (kick.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED magic (magic.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED monitor (monitor.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED music (music.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED news (news.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED nguide (nguide.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED notification (notification.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED oai (oai.js) success
+[2025-08-11 00:55:52] [LANG_LOAD] Loaded language strings for 'en' from module 'onlyadminbox'.
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED onlyadminbox (onlyadminbox.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED out (out.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED persistence (persistence.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED pexels (pexels.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED pickf (pickf.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED pickfile (pickfile.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED ping (ping.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED pix (pix.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED pm (pm.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED prefix (prefix.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED quiz (quiz.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED quiz0 (quiz0.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED quiz2 (quiz2.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED scripture2 (scripture2.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED sepia (sepia.js) success
+[2025-08-11 00:55:52] [LANG_LOAD] Loaded language strings for 'en' from module 'setavt'.
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED setavt (setavt.js) success
+[2025-08-11 00:55:52] [LANG_LOAD] Loaded language strings for 'vi' from module 'setrole'.
+[2025-08-11 00:55:52] [LANG_LOAD] Loaded language strings for 'en' from module 'setrole'.
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED setrole (setrole.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED shell (shell.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED shell2 (shell2.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED slot (slot.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED stats (stats.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED stop (stop.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED story (story.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED supportgc (supportgc.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED tid (tid.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED tiktok (tiktok.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED translate (translate.js) success
+[2025-08-11 00:55:52] [LANG_LOAD] Loaded language strings for 'en' from module 'uid'.
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED uid (uid.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED university (university.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED unsend (unsend.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED unsplash (unsplash.js) success
+[2025-08-11 00:55:52] [COMMAND_LOAD] LOADED uptime (uptime.js) success
+
+──LOADING EVENTS─●
+[2025-08-11 00:55:52] [EVENT_LOAD] LOADED botAddedNotifier success
+[2025-08-11 00:55:52] [EVENT_LOAD] LOADED botRemovalNotifier success
+[2025-08-11 00:55:52] [LANG_LOAD] Loaded language strings for 'en' from event module 'welcome'.
+[2025-08-11 00:55:52] [EVENT_LOAD] LOADED welcome success
+[2025-08-11 00:55:52] [CUSTOM_SCRIPTS] Initializing enhanced custom scripts...
+[2025-08-11 00:55:52] [BOT_READY] Bot initialization complete! Waiting for events...
+[2025-08-11 00:55:52] [DELAY] Adding human-like delay of 2975ms...
+[2025-08-11 00:55:52] [DELAY] Adding human-like delay of 5400ms...
+[2025-08-11 00:55:57] [LOGIN] Attempting login (attempt 1/3)
+[2025-08-11 00:55:57] [LOGIN_ATTEMPT] Attempting login (attempt 1/5)
+[2025-08-11 00:55:57] [USER_AGENT] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0
+[2025-08-11 00:56:29] [LOGIN] Attempting login (attempt 2/3)
+[2025-08-11 00:56:29] [LOGIN_ATTEMPT] Attempting login (attempt 1/5)
+[2025-08-11 00:56:29] [USER_AGENT] Using User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15
+[2025-08-11 00:57:00] [LOGIN] Attempting login (attempt 3/3)
+[2025-08-11 00:57:00] [LOGIN_ATTEMPT] Attempting login (attempt 1/5)
+[2025-08-11 00:57:00] [USER_AGENT] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0
+[2025-08-11 00:57:01] [LOGIN_FALLBACK] Falling back to puppeteer login
+[2025-08-11 01:00:00] [DELAY] Adding human-like delay of 9020ms...
+[2025-08-11 01:00:09] [DELAY] Adding human-like delay of 5681ms...
